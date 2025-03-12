@@ -68,7 +68,7 @@ const mongoUrl =
 mongoose
   .connect(mongoUrl, {
     dbName: "Homeward",
-    useNewUrlParser: true,
+    // useNewUrlParser: true,
     useUnifiedTopology: true,
   })
   .then(() => {
@@ -2467,8 +2467,8 @@ app.post('/updateuserinfo', async (req, res) => {
             ID_card_number,
             nationality,
             Address,
-            // AdddataFirst: true,
-            // acceptPDPA:true
+            AdddataFirst: true,
+            acceptPDPA:true
           },
         }
       );
