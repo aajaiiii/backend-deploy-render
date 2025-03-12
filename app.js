@@ -498,7 +498,7 @@ app.post("/forgot-password", async (req, res) => {
       expiresIn: "7d",
     });
 
-    const link = `http://localhost:5000/reset-password/${oldUser._id}/${token}`;
+    const link = `https://backend-deploy-render-mxok.onrender.com/reset-password/${oldUser._id}/${token}`;
     var transporter = nodemailer.createTransport({
       service: "gmail",
       // มาเปลี่ยนอีเมลที่ส่งด้วย
@@ -959,84 +959,45 @@ app.post("/addcaremanual", uploadimg.fields([{ name: 'image' }, { name: 'file' }
   }
 
   try {
-    const existingCareManual = await Caremanual.findOne({ 
-    caremanual_name : { $regex: `^${caremanual_name}$`, $options: 'i' }
-  });
-    if (existingCareManual) {
+    // ตรวจสอบว่าหัวข้อมีอยู่แล้วหรือไม่ (ใช้ exists() แทน findOne() เพื่อให้เร็วขึ้น)
+    const exists = await Caremanual.exists({ caremanual_name: { $regex: `^${caremanual_name}$`, $options: 'i' } });
+    if (exists) {
       return res.status(400).json({ error: "หัวข้อนี้มีอยู่แล้ว กรุณาใช้หัวข้ออื่น" });
     }
 
-    let imageUrl = null;
-    let fileUrl = null;
-     let originalFileName = null;
     const bucket = admin.storage().bucket();
-    const uploadPromises = [];
 
-    // อัปโหลดรูปภาพ
-    if (req.files['image']) {
-      const imageFileName = Date.now() + '-' + req.files['image'][0].originalname;
-      const imageFile = bucket.file(imageFileName);
+    // ฟังก์ชันอัปโหลดไฟล์
+    const uploadFile = async (file, folder = '') => {
+      if (!file) return { url: null, name: null };
 
-      const imageUploadPromise = new Promise((resolve, reject) => {
-        const imageFileStream = imageFile.createWriteStream({
-          metadata: { contentType: req.files['image'][0].mimetype }
-        });
+      const originalName = Buffer.from(file.originalname, "latin1").toString("utf8");
+      const fileName = `${folder}${Date.now()}-${originalName}`;
+      const fileRef = bucket.file(fileName);
 
-        imageFileStream.on('error', (err) => {
-          console.error('Error uploading image:', err);
-          reject(err);
-        });
-
-        imageFileStream.on('finish', () => {
-          imageUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(imageFileName)}?alt=media`;
-          resolve();
-        });
-
-        imageFileStream.end(req.files['image'][0].buffer);
+      await fileRef.save(file.buffer, {
+        metadata: { contentType: file.mimetype }
       });
 
-      uploadPromises.push(imageUploadPromise);
-    }
+      return {
+        url: `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(fileName)}?alt=media`,
+        name: originalName
+      };
+    };
 
-    // อัปโหลดไฟล์ (ถ้ามี)
-    if (req.files['file']) {
-      const fileOriginalName = Buffer.from(
-        req.files['file'][0].originalname,
-        "latin1"
-      ).toString("utf8");
-      const fileFileName = Date.now() + '-' + req.files['file'][0].originalname;
-      const fileFile = bucket.file(fileFileName);
+    // อัปโหลดไฟล์ทั้งหมดพร้อมกัน
+    const [imageData, fileData] = await Promise.all([
+      uploadFile(req.files['image']?.[0]),
+      uploadFile(req.files['file']?.[0])
+    ]);
 
-      const fileUploadPromise = new Promise((resolve, reject) => {
-        const fileFileStream = fileFile.createWriteStream({
-          metadata: { contentType: req.files['file'][0].mimetype }
-        });
-
-        fileFileStream.on('error', (err) => {
-          console.error('Error uploading file:', err);
-          reject(err);
-        });
-
-        fileFileStream.on('finish', () => {
-          fileUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(fileFileName)}?alt=media`;
-          originalFileName = fileOriginalName; 
-          resolve();
-        });
-
-        fileFileStream.end(req.files['file'][0].buffer);
-      });
-
-      uploadPromises.push(fileUploadPromise);
-    }
-
-    await Promise.all(uploadPromises);
-
+    // บันทึกลงฐานข้อมูล
     const newCare = new Caremanual({
       caremanual_name,
-      image: imageUrl,
-      file: fileUrl,
-      originalFileName,
-      detail,
+      image: imageData.url,
+      file: fileData.url,
+      originalFileName: fileData.name,
+      detail
     });
 
     await newCare.save();
@@ -1047,6 +1008,7 @@ app.post("/addcaremanual", uploadimg.fields([{ name: 'image' }, { name: 'file' }
     return res.status(500).json({ success: false, message: 'Error processing request' });
   }
 });
+
 app.delete("/remove-image/:id", async (req, res) => {
   try {
     const { id } = req.params;
@@ -1095,114 +1057,6 @@ const upload1 = multer({ storage: multer.memoryStorage() }).fields([
   { name: "filePhy", maxCount: 1 },
 ]);
 
-// Add medical information with file upload to Firebase
-// app.post("/addmedicalinformation", upload1, async (req, res) => {
-//   try {
-//     const {
-//       HN,
-//       AN,
-//       Date_Admit,
-//       Date_DC,
-//       Diagnosis,
-//       Chief_complaint,
-//       selectedPersonnel,
-//       Present_illness,
-//       Phychosocial_assessment,
-//       Management_plan,
-//       userId
-//     } = req.body;
-
-//     // Initializing file variables
-//     let filePresent = "";
-//     let fileManage = "";
-//     let filePhychosocial = "";
-
-//     // Upload fileP to Firebase Storage
-//     if (req.files["fileP"] && req.files["fileP"][0]) {
-//       const file = req.files["fileP"][0];
-//       const fileName = Date.now() + '-' + file.originalname;
-//       const fileRef = bucket.file(fileName);
-//       const fileStream = fileRef.createWriteStream({
-//         metadata: { contentType: file.mimetype },
-//       });
-
-//       fileStream.end(file.buffer);
-//       await new Promise((resolve, reject) => {
-//         fileStream.on('finish', () => {
-//           filePresent = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(fileName)}?alt=media`;
-//           resolve();
-//         });
-//         fileStream.on('error', reject);
-//       });
-//     }
-
-//     // Upload fileM to Firebase Storage
-//     if (req.files["fileM"] && req.files["fileM"][0]) {
-//       const file = req.files["fileM"][0];
-//       const fileName = Date.now() + '-' + file.originalname;
-//       const fileRef = bucket.file(fileName);
-//       const fileStream = fileRef.createWriteStream({
-//         metadata: { contentType: file.mimetype },
-//       });
-
-//       fileStream.end(file.buffer);
-//       await new Promise((resolve, reject) => {
-//         fileStream.on('finish', () => {
-//           fileManage = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(fileName)}?alt=media`;
-//           resolve();
-//         });
-//         fileStream.on('error', reject);
-//       });
-//     }
-
-//     // Upload filePhy to Firebase Storage
-//     if (req.files["filePhy"] && req.files["filePhy"][0]) {
-//       const file = req.files["filePhy"][0];
-//       const fileName = Date.now() + '-' + file.originalname;
-//       const fileRef = bucket.file(fileName);
-//       const fileStream = fileRef.createWriteStream({
-//         metadata: { contentType: file.mimetype },
-//       });
-
-//       fileStream.end(file.buffer);
-//       await new Promise((resolve, reject) => {
-//         fileStream.on('finish', () => {
-//           filePhychosocial = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(fileName)}?alt=media`;
-//           resolve();
-//         });
-//         fileStream.on('error', reject);
-//       });
-//     }
-
-//     // Check if userId is present
-//     if (!userId) {
-//       return res.json({ status: "error", message: "ไม่พบข้อมูลผู้ใช้" });
-//     }
-
-//     // Create new medical information record
-//     const medicalInformation = await MedicalInformation.create({
-//       HN,
-//       AN,
-//       Date_Admit,
-//       Date_DC,
-//       Diagnosis,
-//       Chief_complaint,
-//       Present_illness,
-//       selectedPersonnel,
-//       Phychosocial_assessment,
-//       Management_plan,
-//       fileM: fileManage,
-//       fileP: filePresent,
-//       filePhy: filePhychosocial,
-//       user: userId,
-//     });
-
-//     res.json({ status: "ok", data: medicalInformation });
-//   } catch (error) {
-//     console.error("Error adding medical information:", error);
-//     res.json({ status: "error", message: "เกิดข้อผิดพลาดขณะเพิ่มข้อมูล" });
-//   }
-// });
 app.post("/addmedicalinformation", upload1, async (req, res) => {
   try {
     const {
@@ -1216,80 +1070,40 @@ app.post("/addmedicalinformation", upload1, async (req, res) => {
       Present_illness,
       Phychosocial_assessment,
       Management_plan,
-      userId
+      userId,
     } = req.body;
 
-    let filePresent = "";
-    let fileManage = "";
-    let filePhychosocial = "";
-    let filePresentName = "";
-    let fileManageName = "";
-    let filePhychosocialName = "";
-    
-    // Upload fileP to Firebase Storage
-    if (req.files["fileP"] && req.files["fileP"][0]) {
-      const file = req.files["fileP"][0];
+    const uploadFile = async (file, fileKey) => {
+      if (!file) return { url: "", name: "" };
+
       const originalName = Buffer.from(file.originalname, "latin1").toString("utf8");
       const fileName = Date.now() + '-' + originalName;
       const fileRef = bucket.file(fileName);
       const fileStream = fileRef.createWriteStream({
         metadata: { contentType: file.mimetype },
       });
-    
+
       fileStream.end(file.buffer);
-      await new Promise((resolve, reject) => {
-        fileStream.on('finish', () => {
-          filePresent = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(fileName)}?alt=media`;
-          filePresentName = originalName; // เก็บชื่อไฟล์ดั้งเดิม
-          resolve();
+
+      return new Promise((resolve, reject) => {
+        fileStream.on("finish", () => {
+          resolve({
+            url: `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(fileName)}?alt=media`,
+            name: originalName,
+          });
         });
-        fileStream.on('error', reject);
+        fileStream.on("error", reject);
       });
-    }
-    
-    // Upload fileM to Firebase Storage
-    if (req.files["fileM"] && req.files["fileM"][0]) {
-      const file = req.files["fileM"][0];
-      const originalName = Buffer.from(file.originalname, "latin1").toString("utf8");
-      const fileName = Date.now() + '-' + originalName;
-      const fileRef = bucket.file(fileName);
-      const fileStream = fileRef.createWriteStream({
-        metadata: { contentType: file.mimetype },
-      });
-    
-      fileStream.end(file.buffer);
-      await new Promise((resolve, reject) => {
-        fileStream.on('finish', () => {
-          fileManage = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(fileName)}?alt=media`;
-          fileManageName = originalName;
-          resolve();
-        });
-        fileStream.on('error', reject);
-      });
-    }
-    
-    // Upload filePhy to Firebase Storage
-    if (req.files["filePhy"] && req.files["filePhy"][0]) {
-      const file = req.files["filePhy"][0];
-      const originalName = Buffer.from(file.originalname, "latin1").toString("utf8");
-      const fileName = Date.now() + '-' + originalName;
-      const fileRef = bucket.file(fileName);
-      const fileStream = fileRef.createWriteStream({
-        metadata: { contentType: file.mimetype },
-      });
-    
-      fileStream.end(file.buffer);
-      await new Promise((resolve, reject) => {
-        fileStream.on('finish', () => {
-          filePhychosocial = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(fileName)}?alt=media`;
-          filePhychosocialName = originalName;
-          resolve();
-        });
-        fileStream.on('error', reject);
-      });
-    }
-    
-    // Save medical information with original file names
+    };
+
+    // อัปโหลดทุกไฟล์พร้อมกัน
+    const [filePData, fileMData, filePhyData] = await Promise.all([
+      uploadFile(req.files["fileP"]?.[0], "fileP"),
+      uploadFile(req.files["fileM"]?.[0], "fileM"),
+      uploadFile(req.files["filePhy"]?.[0], "filePhy"),
+    ]);
+
+    // บันทึกข้อมูลลงฐานข้อมูล
     const medicalInformation = await MedicalInformation.create({
       HN,
       AN,
@@ -1301,21 +1115,22 @@ app.post("/addmedicalinformation", upload1, async (req, res) => {
       selectedPersonnel,
       Phychosocial_assessment,
       Management_plan,
-      fileM: fileManage,
-      fileP: filePresent,
-      filePhy: filePhychosocial,
-      fileMName: fileManageName, // เก็บชื่อไฟล์ดั้งเดิม
-      filePName: filePresentName,
-      filePhyName: filePhychosocialName,
+      fileM: fileMData.url,
+      fileP: filePData.url,
+      filePhy: filePhyData.url,
+      fileMName: fileMData.name,
+      filePName: filePData.name,
+      filePhyName: filePhyData.name,
       user: userId,
     });
-    
+
     res.json({ status: "ok", data: medicalInformation });
   } catch (error) {
     console.error("Error adding medical information:", error);
     res.json({ status: "error", message: "เกิดข้อผิดพลาดขณะเพิ่มข้อมูล" });
   }
 });
+
 app.get("/medicalInformation/:id", async (req, res) => {
   const { id } = req.params;
   try {
@@ -1962,7 +1777,7 @@ app.post("/forgot-passworddt", async (req, res) => {
       expiresIn: "5m",
     });
 
-    const link = `http://localhost:5000/reset-passworddt/${oldUser._id}/${token}`;
+    const link = `https://backend-deploy-render-mxok.onrender.com/reset-passworddt/${oldUser._id}/${token}`;
     var transporter = nodemailer.createTransport({
       service: "gmail",
       // มาเปลี่ยนอีเมลที่ส่งด้วย
@@ -4155,98 +3970,78 @@ app.post("/updatenameadmin/:id", async (req, res) => {
 
 
 //----------------------------------------------
+const deleteFileFromStorage = async (fileUrl) => {
+  if (!fileUrl) return;
+  const filePath = decodeURIComponent(fileUrl.split("/o/")[1].split("?alt=media")[0]);
+  await bucket.file(filePath).delete().catch(err => console.error("Error deleting file:", err));
+};
+
 app.post("/updatemedicalinformation/:id", upload1, async (req, res) => {
-  const {
-    HN,
-    AN,
-    Date_Admit,
-    Date_DC,
-    Diagnosis,
-    Chief_complaint,
-    Present_illness,
-    Phychosocial_assessment,
-    Management_plan,
-    selectedPersonnel,
-  } = req.body;
+  const { HN, AN, Date_Admit, Date_DC, Diagnosis, Chief_complaint, Present_illness,
+    Phychosocial_assessment, Management_plan, selectedPersonnel, } = req.body;
   const { id } = req.params;
 
   try {
-    let filePresent = "";
-    let fileManage = "";
-    let filePhychosocial = "";
+    const oldMedicalInfo = await MedicalInformation.findById(id);
+    if (!oldMedicalInfo) {
+      return res.status(404).json({ status: "Medical information not found" });
+    }
 
-    let filePresentName = "";
-    let fileManageName = "";
-    let filePhychosocialName = "";
+    let filePresent = oldMedicalInfo.fileP;
+    let filePresentName = oldMedicalInfo.filePName;
+    let fileManage = oldMedicalInfo.fileM;
+    let fileManageName = oldMedicalInfo.fileMName;
+    let filePhychosocial = oldMedicalInfo.filePhy;
+    let filePhychosocialName = oldMedicalInfo.filePhyName;
 
     const bucket = admin.storage().bucket();
 
   if (req.files["fileP"] && req.files["fileP"][0]) {
+      await deleteFileFromStorage(filePresent); 
+
       const file = req.files["fileP"][0];
       const originalName  = Buffer.from(file.originalname, "latin1").toString("utf8");// เก็บชื่อไฟล์ดั้งเดิม
       const fileName = Date.now() + '-' + originalName;
       const fileRef = bucket.file(fileName);
-      const fileStream = fileRef.createWriteStream({
-        metadata: { contentType: file.mimetype },
-      });
-
-      fileStream.end(file.buffer);
-      await new Promise((resolve, reject) => {
-        fileStream.on('finish', () => {
-          filePresent = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(fileName)}?alt=media`;
-          filePresentName = originalName; // เก็บชื่อไฟล์ดั้งเดิม
-          resolve();
-        });
-        fileStream.on('error', reject);
-      });
+      fileRef.createWriteStream({ metadata: { contentType: file.mimetype } }).end(file.buffer);
+      filePresent = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(fileName)}?alt=media`;
+      filePresentName = originalName; 
+    } else if (req.body.deleteFileP === "true") {
+      await deleteFileFromStorage(filePresent);
+      filePresent = "";
+      filePresentName = "";
     }
 
     // Upload fileM to Firebase Storage (if exists)
     if (req.files["fileM"] && req.files["fileM"][0]) {
+      await deleteFileFromStorage(fileManage);
       const file = req.files["fileM"][0];
       const originalName = Buffer.from(file.originalname, "latin1").toString("utf8");
       const fileName = Date.now() + '-' + originalName;
       const fileRef = bucket.file(fileName);
-      const fileStream = fileRef.createWriteStream({
-        metadata: { contentType: file.mimetype },
-      });
-
-      fileStream.end(file.buffer);
-      await new Promise((resolve, reject) => {
-        fileStream.on('finish', () => {
-          fileManage = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(fileName)}?alt=media`;
-          fileManageName = originalName;
-          resolve();
-        });
-        fileStream.on('error', reject);
-      });
+      fileRef.createWriteStream({ metadata: { contentType: file.mimetype } }).end(file.buffer);
+      fileManage = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(fileName)}?alt=media`;
+      fileManageName = originalName;
+    } else if (req.body.deleteFileM === "true") {
+      await deleteFileFromStorage(fileManage);
+      fileManage = "";
+      fileManageName = "";
     }
-
     // Upload filePhy to Firebase Storage (if exists)
     if (req.files["filePhy"] && req.files["filePhy"][0]) {
       const file = req.files["filePhy"][0];
       const originalName = Buffer.from(file.originalname, "latin1").toString("utf8");
       const fileName = Date.now() + '-' + originalName;
       const fileRef = bucket.file(fileName);
-      const fileStream = fileRef.createWriteStream({
-        metadata: { contentType: file.mimetype },
-      });
-
-      fileStream.end(file.buffer);
-      await new Promise((resolve, reject) => {
-        fileStream.on('finish', () => {
-          filePhychosocial = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(fileName)}?alt=media`;
-          filePhychosocialName = originalName;
-          resolve();
-        });
-        fileStream.on('error', reject);
-      });
+      fileRef.createWriteStream({ metadata: { contentType: file.mimetype } }).end(file.buffer);
+      filePhychosocial = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(fileName)}?alt=media`;
+      filePhychosocialName = originalName;
+    } else if (req.body.deleteFilePhy === "true") {
+      await deleteFileFromStorage(filePhychosocial);
+      filePhychosocial = "";
+      filePhychosocialName = "";
     }
 
-    const oldMedicalInfo = await MedicalInformation.findById(id);
-    if (!oldMedicalInfo) {
-      return res.status(404).json({ status: "Medical information not found" });
-    }
 
     // ตรวจสอบว่ามีการอัปโหลดไฟล์ใหม่หรือไม่
     const updatedMedicalInformation = await MedicalInformation.findByIdAndUpdate(
@@ -4261,12 +4056,12 @@ app.post("/updatemedicalinformation/:id", upload1, async (req, res) => {
         Present_illness,
         Phychosocial_assessment,
         Management_plan,
-        fileP: filePresent || oldMedicalInfo.fileP,
-        filePName: filePresentName || oldMedicalInfo.filePName, // อัปเดตชื่อไฟล์ดั้งเดิม
-        fileM: fileManage || oldMedicalInfo.fileM,
-        fileMName: fileManageName || oldMedicalInfo.fileMName,
-        filePhy: filePhychosocial || oldMedicalInfo.filePhy,
-        filePhyName: filePhychosocialName || oldMedicalInfo.filePhyName,
+        fileP: filePresent,
+        filePName: filePresentName, // อัปเดตชื่อไฟล์ดั้งเดิม
+        fileM: fileManage,
+        fileMName: fileManageName,
+        filePhy: filePhychosocial,
+        filePhyName: filePhychosocialName,
         selectedPersonnel,
       },
       { new: true }
@@ -4281,6 +4076,8 @@ app.post("/updatemedicalinformation/:id", upload1, async (req, res) => {
     res.status(500).json({ status: "error", message: "Error updating medical information" });
   }
 });
+
+
 //ดึงข้อมูลแพทย์
 app.get("/getmpersonnel/:id", async (req, res) => {
   const { id } = req.params;
