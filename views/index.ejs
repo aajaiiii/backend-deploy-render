@@ -187,12 +187,12 @@
                 return;
             }
 
-            // if (password.length < 8) {
-            //     event.preventDefault();
-            //     errorMessage.textContent = 'รหัสผ่านต้องมีความยาวอย่างน้อย 8 ตัวอักษร';
-            //     errorMessage.style.display = 'block';
-            //     return;
-            // }
+            if (password.length < 8) {
+                event.preventDefault();
+                errorMessage.textContent = 'รหัสผ่านต้องมีความยาวอย่างน้อย 8 ตัวอักษร';
+                errorMessage.style.display = 'block';
+                return;
+            }
 
             errorMessage.style.display = 'none';
         };
