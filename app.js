@@ -5213,32 +5213,96 @@ app.post('/updateAssessinhomesss/:id', async (req, res) => {
 });
 
 app.post('/submitagenda/:id', async (req, res) => {
-  const { userId, MPersonnel, Caregiver, newCaregivers, status_agenda, PatientAgenda, CaregiverAgenda, CaregiverAssessment, Zaritburdeninterview } = req.body;
-
-  console.log("Received newCaregivers:", newCaregivers); // ตรวจสอบว่าได้รับ newCaregivers หรือไม่
-
   try {
-    // สร้างเอกสาร Agenda ใหม่
-    const newAgenda = new Agenda({
-      user: userId,
+    const {
+      userId,
       MPersonnel,
       Caregiver,
-      newCaregivers, // บันทึก newCaregivers ที่ได้รับ
+      newCaregivers,
+      status_agenda,
       PatientAgenda,
       CaregiverAgenda,
       CaregiverAssessment,
-      Zaritburdeninterview,
-      status_agenda,
-    });
+      Zaritburdeninterview
+    } = req.body;
 
-    await newAgenda.save();
-    res.status(201).json({ success: true, message: 'Agenda saved successfully', agenda: newAgenda });
-  } catch (error) {
-    console.error('Error saving Agenda:', error);
-    res.status(500).json({ success: false, message: 'Error saving Agenda' });
-  }
+    console.log("Received CaregiverAgenda:", JSON.stringify(CaregiverAgenda, null, 2));
+    console.log("Received CaregiverAssessment:", JSON.stringify(CaregiverAssessment, null, 2));
+
+    // ✅ ตรวจสอบและสร้างโครงสร้างข้อมูลที่ถูกต้อง
+    const formattedCaregiverAgenda = {
+      Old_Caregiver_Agenda: CaregiverAgenda?.Old_Caregiver_Agenda.map(cg => ({
+        firstName: cg.firstName || "",
+        lastName: cg.lastName || "",
+        relationship: cg.relationship || "",
+        caregiver_idea: cg.caregiver_idea || "",
+        caregiver_feeling: cg.caregiver_feeling || "",
+        caregiver_funtion: cg.caregiver_function || "",
+        caregiver_expectation: cg.caregiver_expectation || "",
+      })) || [],
+
+      New_Caregiver_Agenda: CaregiverAgenda?.New_Caregiver_Agenda.map(cg => ({
+        firstName: cg.firstName || "",
+        lastName: cg.lastName || "",
+        relationship: cg.relationship || "",
+        caregiver_idea: cg.caregiver_idea || "",
+        caregiver_feeling: cg.caregiver_feeling || "",
+        caregiver_funtion: cg.caregiver_function || "",
+        caregiver_expectation: cg.caregiver_expectation || "",
+      })) || []
+    };
+
+    const formattedCaregiverAssessment = {
+      Old_Caregiver_Assessment: CaregiverAssessment?.Old_Caregiver_Assessment.map(cg => ({
+        firstName: cg.firstName || "",
+        lastName: cg.lastName || "",
+        relationship: cg.relationship || "",
+        care: cg.care || "",
+        affection: cg.affection || "",
+        rest: cg.rest || "",
+        empathy: cg.empathy || "",
+        goalOfCare: cg.goalOfCare || "",
+        information: cg.information || "",
+        ventilation: cg.ventilation || "",
+        empowerment: cg.empowerment || "",
+        resource: cg.resource || "",
+      })) || [],
+      New_Caregiver_Assessment: CaregiverAssessment?.New_Caregiver_Assessment.map(cg => ({
+        firstName: cg.firstName || "",
+        lastName: cg.lastName || "",
+        relationship: cg.relationship || "",
+        care: cg.care || "",
+        affection: cg.affection || "",
+        rest: cg.rest || "",
+        empathy: cg.empathy || "",
+        goalOfCare: cg.goalOfCare || "",
+        information: cg.information || "",
+        ventilation: cg.ventilation || "",
+        empowerment: cg.empowerment || "",
+        resource: cg.resource || "",
+      })) || []
+    };
+
+// ✅ บันทึกข้อมูลลงฐานข้อมูล
+const newAgenda = new Agenda({
+  user: userId,
+  MPersonnel,
+  Caregiver,
+  newCaregivers: Array.isArray(newCaregivers) ? newCaregivers : [],
+  PatientAgenda,
+  CaregiverAgenda: formattedCaregiverAgenda,
+  CaregiverAssessment: formattedCaregiverAssessment,
+  Zaritburdeninterview,
+  status_agenda,
 });
 
+await newAgenda.save();
+res.status(201).json({ success: true, message: 'Agenda saved successfully', agenda: newAgenda });
+  } catch (error) {
+  console.error('Error saving Agenda:', error);
+  res.status(500).json({ success: false, message: 'Error saving Agenda' });
+}
+});
 app.get('/getAgendaForm/:id', async (req, res) => {
   const { id } = req.params;
 

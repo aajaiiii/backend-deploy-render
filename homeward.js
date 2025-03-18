@@ -566,13 +566,12 @@ const AssessinhomesssSchema = new mongoose.Schema({
     userAgeInMonths: { type: Number, default: 0 }, // อายุในเดือน
     weight: { type: Number, default: 0 },
     height: { type: Number, default: 0 },
-    bmr: { type: Number, default: 0 },
-    tdee: { type: Number, default: 0 },
+    bmr: { type: Number, default: "" },
+    tdee: { type: Number, default: "" },
     activityLevel: { type: String, default: "" },
     intakeMethod: [{ type: String, default: "" }], // Array of strings
     foodTypes: [{ type: String, default: "" }], // Array of strings
     medicalFood: { type: String, default: "" },
-    otherFood: { type: String, default: "" },
     favoriteFood: { type: String, default: "" },
     cooks: [{ type: String, default: "" }], // Array of strings
     nutritionStatus: { type: String, default: "" },
@@ -609,7 +608,7 @@ const AssessinhomesssSchema = new mongoose.Schema({
       ud: { type: String, default: "" },
       habit: { type: String, default: "" },
       careDetails: { type: String, default: "" },
-      isNew: { type: Boolean, default: false },
+      // isNew: { type: Boolean, default: false },
     }],
     newCaregivers: [{
       firstName: { type: String, default: "" },
@@ -624,7 +623,7 @@ const AssessinhomesssSchema = new mongoose.Schema({
       ud: { type: String, default: "" },
       habit: { type: String, default: "" },
       careDetails: { type: String, default: "" },
-      isNew: { type: Boolean, default: true },
+      // isNew: { type: Boolean, default: true },
     }],
   },
   Medication: {
@@ -746,19 +745,47 @@ const AgendaSchema = new mongoose.Schema({
     patient_expectation: { type: String, default: "" },
   },
   CaregiverAgenda: {
-    Care_Agenda: [{
-      firstName: { type: String, default: "" }, // เพิ่มฟิลด์นี้
-      lastName: { type: String, default: "" },  // เพิ่มฟิลด์นี้
+    Old_Caregiver_Agenda: [{   
+      firstName: { type: String, default: "" },
+      lastName: { type: String, default: "" },
+      relationship: { type: String, default: "" },
       caregiver_idea: { type: String, default: "" },
       caregiver_feeling: { type: String, default: "" },
-      caregiver_funtion: { type: String, default: "" },
+      caregiver_function: { type: String, default: "" },
+      caregiver_expectation: { type: String, default: "" },
+    }],
+
+    New_Caregiver_Agenda: [{  
+      firstName: { type: String, default: "" },
+      lastName: { type: String, default: "" },
+      relationship: { type: String, default: "" },
+      caregiver_idea: { type: String, default: "" },
+      caregiver_feeling: { type: String, default: "" },
+      caregiver_function: { type: String, default: "" },
       caregiver_expectation: { type: String, default: "" },
     }],
   },
+
   CaregiverAssessment: {
-    Care_Assessment: [{
-      firstName: { type: String, default: "" }, // เพิ่มฟิลด์นี้
-      lastName: { type: String, default: "" },  // เพิ่มฟิลด์นี้
+    Old_Caregiver_Assessment: [{  
+      firstName: { type: String, default: "" },
+      lastName: { type: String, default: "" },
+      relationship: { type: String, default: "" },
+      care: { type: String, default: "" },
+      affection: { type: String, default: "" },
+      rest: { type: String, default: "" },
+      empathy: { type: String, default: "" },
+      goalOfCare: { type: String, default: "" },
+      information: { type: String, default: "" },
+      ventilation: { type: String, default: "" },
+      empowerment: { type: String, default: "" },
+      resource: { type: String, default: "" },
+    }],
+
+    New_Caregiver_Assessment: [{  
+      firstName: { type: String, default: "" },
+      lastName: { type: String, default: "" },
+      relationship: { type: String, default: "" },
       care: { type: String, default: "" },
       affection: { type: String, default: "" },
       rest: { type: String, default: "" },
