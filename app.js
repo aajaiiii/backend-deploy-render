@@ -5329,12 +5329,6 @@ app.post('/submitagenda/:id', async (req, res) => {
     });
 
     await newAgenda.save();
-    // ✅ คืนค่า `_id` ของฟอร์มที่เพิ่งบันทึก
-    res.status(201).json({
-      success: true,
-      message: 'AgendaForm saved successfully',
-      data: newAgenda, // ส่งคืนข้อมูลของฟอร์ม รวมถึง `_id`
-    });
     res.status(201).json({ success: true, message: 'Agenda saved successfully', agenda: newAgenda });
   } catch (error) {
     console.error('Error saving Agenda:', error);
