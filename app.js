@@ -4911,8 +4911,15 @@ app.post('/submitReadinessForm/:id', async (req, res) => {
       Readiness2,
       status_name,
     });
+
     await newReadinessForm.save();
-    res.status(201).json({ success: true, message: 'ReadinessForm saved successfully' });
+
+    // ✅ คืนค่า `_id` ของฟอร์มที่เพิ่งบันทึก
+    res.status(201).json({
+      success: true,
+      message: 'ReadinessForm saved successfully',
+      data: newReadinessForm, // ส่งคืนข้อมูลของฟอร์ม รวมถึง `_id`
+    });
   } catch (error) {
     console.error('Error saving ReadinessForm:', error);
     res.status(500).json({ success: false, message: 'Error saving ReadinessForm' });
@@ -5322,6 +5329,12 @@ app.post('/submitagenda/:id', async (req, res) => {
     });
 
     await newAgenda.save();
+    // ✅ คืนค่า `_id` ของฟอร์มที่เพิ่งบันทึก
+    res.status(201).json({
+      success: true,
+      message: 'AgendaForm saved successfully',
+      data: newAgenda, // ส่งคืนข้อมูลของฟอร์ม รวมถึง `_id`
+    });
     res.status(201).json({ success: true, message: 'Agenda saved successfully', agenda: newAgenda });
   } catch (error) {
     console.error('Error saving Agenda:', error);
