@@ -741,7 +741,7 @@ const AgendaSchema = new mongoose.Schema({
   PatientAgenda: {
     patient_idea: { type: String, default: "" },
     patient_feeling: { type: String, default: "" },
-    patient_funtion: { type: String, default: "" },
+    patient_function: { type: String, default: "" },
     patient_expectation: { type: String, default: "" },
   },
   CaregiverAgenda: {
