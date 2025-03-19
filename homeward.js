@@ -125,6 +125,10 @@ const UserScehma = new mongoose.Schema(
     nationality: String,
     Address: String,
     acceptPDPA: { type: Boolean, default: false },
+    isDeleted: {
+      type: Boolean,
+      default: false, // ระบุว่าลบข้อมูลแล้วหรือไม่
+    },
     deletedAt: { type: Date, default: null },
     deleteExpiry:  { type: Date, default: null },
     AdddataFirst: { type: Boolean, default: false },

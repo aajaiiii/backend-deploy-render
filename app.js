@@ -3833,6 +3833,7 @@ app.delete("/deleteUser/:id", async (req, res) => {
       UserId,
       {
         $set: {
+          isDeleted: true,  
           deletedAt: new Date(),
           deleteExpiry: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
         },
@@ -3866,7 +3867,13 @@ app.post("/recoveruser/:id", async (req, res) => {
   try {
     const user = await User.findByIdAndUpdate(
       userId,
-      { deletedAt: null },
+      {
+        $set: {
+          isDeleted: false, // ตั้งค่าเป็น false เพื่อระบุว่าไม่ถูกลบอีกต่อไป
+          deletedAt: null,  // ตั้งค่าเป็น null เพราะไม่ได้ถูกลบแล้ว
+          deleteExpiry: null 
+        },
+      },
       { new: true }
     );
     if (!user) {
