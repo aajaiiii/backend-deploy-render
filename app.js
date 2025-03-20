@@ -5788,3 +5788,50 @@ app.get("/immobility/groups", async (req, res) => {
     res.status(500).json({ success: false, error: "Internal server error" });
   }
 });
+
+
+
+// API ดึงข้อมูล "โรคที่เข้ารับการรักษามากที่สุด 3 อันดับแรก"
+app.get("/getDiagnosis/top3", async (req, res) => {
+  try {
+    // กำหนดวันที่เริ่มต้นเป็นวันที่ 1 มีนาคม 2025
+    const startDate = new Date('2025-03-01');
+    const endDate = new Date(); // ใช้วันที่ปัจจุบัน
+
+    // ใช้ aggregate เพื่อกรองข้อมูลตามวันที่และนับจำนวนโรค
+    const topDiagnosis = await MedicalInformation.aggregate([
+      // กรองข้อมูลในช่วงเวลาที่กำหนด
+      {
+        $match: {
+          createdAt: { $gte: startDate, $lte: endDate } // กรองจากวันที่ 1 มีนาคม 2025 จนถึงปัจจุบัน
+        }
+      },
+      // กลุ่มข้อมูลตามโรค (Diagnosis)
+      {
+        $group: {
+          _id: "$Diagnosis", // กลุ่มข้อมูลตาม Diagnosis
+          count: { $sum: 1 } // นับจำนวนของแต่ละโรค
+        }
+      },
+      // เรียงข้อมูลตามจำนวนจากมากไปน้อย
+      {
+        $sort: { count: -1 }
+      },
+      // จำกัดผลลัพธ์แค่ 3 อันดับแรก
+      {
+        $limit: 3
+      }
+    ]);
+
+    // ส่งข้อมูลผลลัพธ์กลับไปยัง client
+    res.json(topDiagnosis);
+  } catch (error) {
+    console.error("Error fetching top Diagnosis:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
+// Start the server (ปรับพอร์ตตามต้องการ)
+app.listen(3000, () => {
+  console.log("Server is running on http://localhost:3000");
+});
