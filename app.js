@@ -1649,9 +1649,8 @@ app.get("/getcaremanual/:id", async (req, res) => {
       return res.status(404).json({ error: "Caremanual not found" });
     }
     if (caremanual) {
-      // เพิ่มจำนวนการเข้าชม
       caremanual.views += 1;
-      await caremanual.save(); // บันทึกจำนวนการเข้าชมที่อัปเดตแล้ว
+      await caremanual.save(); 
     }
     res.json(caremanual);
   } catch (error) {
@@ -1659,6 +1658,20 @@ app.get("/getcaremanual/:id", async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
+
+app.get("/getcaremanuals/top5", async (req, res) => {
+  try {
+    const topCaremanuals = await Caremanual.find()
+      .sort({ views: -1 })
+      .limit(5);
+
+    res.json(topCaremanuals);
+  } catch (error) {
+    console.error("Error fetching top caremanuals:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
 
 //ฝั่งแพทย์
 //login
