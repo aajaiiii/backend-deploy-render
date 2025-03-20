@@ -2381,6 +2381,41 @@ app.post('/updateuserinfo', async (req, res) => {
   }
 });
 
+app.post("/updateuserinfo/:id", async (req, res) => {
+  const { name, surname, tel, gender, birthday, ID_card_number, nationality, Address } = req.body;
+  const userId = req.params.id; // ดึง _id จาก URL params
+
+  try {
+    // ตรวจสอบว่าผู้ใช้มีอยู่จริงหรือไม่
+    const existingUser = await User.findById(userId);
+    if (!existingUser) {
+      return res.status(404).send({ error: "User not found" });
+    }
+
+    // อัปเดตข้อมูลผู้ใช้
+    await User.updateOne(
+      { _id: userId }, // ใช้ _id เป็นเงื่อนไข
+      {
+        $set: {
+          name,
+          surname,
+          tel,
+          gender,
+          birthday,
+          ID_card_number,
+          nationality,
+          Address,
+        },
+      }
+    );
+
+    res.status(200).send({ status: "Ok", message: "User updated successfully" });
+
+  } catch (error) {
+    console.error("❌ Error updating user:", error);
+    res.status(500).send({ error: "Error updating user information" });
+  }
+});
 
 //ลืมรหัสผ่าน
 app.post('/forgot-passworduser', async (req, res) => {
